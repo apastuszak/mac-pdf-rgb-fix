@@ -24,23 +24,18 @@ Both tools convert all affected images to standard RGB colour space and re-encod
 | File | Description |
 |------|-------------|
 | `pdf_images_to_rgb.py` | Command-line script |
-| `mac_pdf_rgb_fix_gui.py` | Graphical user interface |
+| `mac_pdf_rgb_fix_appkit.py` | Native macOS GUI (recommended) |
+| `mac_pdf_rgb_fix_gui.py` | Tkinter GUI (cross-platform fallback) |
 
 ## Requirements
 
-Python 3.10+ and two packages:
+Python 3.10+ and:
 
 ```bash
-pip install pymupdf pillow
+pip install pymupdf pillow pyobjc-core pyobjc-framework-Cocoa --break-system-packages
 ```
 
-On Homebrew-managed Python installs (common on macOS), you may need:
-
-```bash
-pip install pymupdf pillow --break-system-packages
-```
-
-The GUI also requires Tkinter, which ships with Python but may need a separate install on some macOS setups:
+The Tkinter fallback GUI requires Tkinter, which ships with Python but may need a separate install on some macOS setups:
 
 ```bash
 brew install python-tk
@@ -48,11 +43,17 @@ brew install python-tk
 
 ## Usage
 
-### GUI
+### Native macOS GUI (recommended)
 
 ```bash
-python mac_pdf_rgb_fix_gui.py
-# If that doesn't work, try:
+python3 mac_pdf_rgb_fix_appkit.py
+```
+
+Uses native AppKit controls — standard macOS title bar, system accent colour, native file dialogs, and a resizable log panel. Requires `pyobjc-core` and `pyobjc-framework-Cocoa`.
+
+### Tkinter GUI (cross-platform fallback)
+
+```bash
 python3 mac_pdf_rgb_fix_gui.py
 ```
 
