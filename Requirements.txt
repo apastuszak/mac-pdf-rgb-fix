@@ -2,3 +2,6 @@ pymupdf
 pillow
 pyobjc-core
 pyobjc-framework-Cocoa
+
+# Tkinter GUI font loading (macOS: CoreText, Windows: GDI32, Linux: fontconfig)
+# All three use stdlib ctypes — no extra packages needed.

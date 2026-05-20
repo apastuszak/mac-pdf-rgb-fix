@@ -36,8 +36,7 @@ import os
 # Stored as base64-encoded TTF data; registered with macOS CoreText at startup
 # so Tkinter can use them by family name.
 # ---------------------------------------------------------------------------
-import base64 as _base64, ctypes as _ctypes, ctypes.util as _cutil
-import tempfile as _tempfile, atexit as _atexit, os as _os
+import base64 as _base64, tempfile as _tempfile, atexit as _atexit, os as _os
 
 _FONT_REGULAR_B64 = (
     "AAEAAAATAQAABAAwQkFTRWUeXb0AAAE8AAAARkRTSUcAAAABAAaUVAAAAAhHREVGFu8eRQAAAYQAAAXq"
@@ -14370,36 +14369,53 @@ _FONT_BOLD_B64 = (
 )
 
 _font_tmp_files = []
+_SS = "Source Sans 3"
 
-def _load_font(b64_data: str) -> bool:
-    """Decode a base64 TTF, write to a temp file, register with macOS CoreText."""
-    try:
-        font_bytes = _base64.b64decode(b64_data)
-        tmp = _tempfile.NamedTemporaryFile(suffix=".ttf", delete=False)
-        tmp.write(font_bytes)
-        tmp.close()
-        _font_tmp_files.append(tmp.name)
+def _load_fonts():
+    """Decode embedded TTFs to temp files and register them with the OS font
+    system so Tk can use them by family name.  Cross-platform:
+      macOS   — CoreText CTFontManagerRegisterFontsForURL
+      Windows — GDI32 AddFontResourceEx
+      Linux   — fontconfig FcConfigAppFontAddFile (current process, no restart)
+    Called after the Tk root exists (Linux fontconfig needs the display open)."""
+    import sys, ctypes
+    for b64 in (_FONT_REGULAR_B64, _FONT_BOLD_B64):
+        try:
+            data = _base64.b64decode(b64)
+            tmp = _tempfile.NamedTemporaryFile(suffix=".ttf", delete=False)
+            tmp.write(data)
+            tmp.close()
+            _font_tmp_files.append(tmp.name)
+            path = tmp.name
 
-        ct = _ctypes.cdll.LoadLibrary(_cutil.find_library("CoreText"))
-        cf = _ctypes.cdll.LoadLibrary(_cutil.find_library("CoreFoundation"))
+            if sys.platform == "darwin":
+                import ctypes.util
+                ct = ctypes.cdll.LoadLibrary(ctypes.util.find_library("CoreText"))
+                cf = ctypes.cdll.LoadLibrary(ctypes.util.find_library("CoreFoundation"))
+                cf.CFURLCreateFromFileSystemRepresentation.restype = ctypes.c_void_p
+                cf.CFURLCreateFromFileSystemRepresentation.argtypes = [
+                    ctypes.c_void_p, ctypes.c_char_p, ctypes.c_long, ctypes.c_bool]
+                ct.CTFontManagerRegisterFontsForURL.argtypes = [
+                    ctypes.c_void_p, ctypes.c_uint32, ctypes.c_void_p]
+                ct.CTFontManagerRegisterFontsForURL.restype = ctypes.c_bool
+                url = cf.CFURLCreateFromFileSystemRepresentation(
+                    None, path.encode(), len(path), False)
+                ct.CTFontManagerRegisterFontsForURL(url, 1, None)
 
-        cf.CFURLCreateFromFileSystemRepresentation.restype = _ctypes.c_void_p
-        cf.CFURLCreateFromFileSystemRepresentation.argtypes = [
-            _ctypes.c_void_p, _ctypes.c_char_p, _ctypes.c_long, _ctypes.c_bool
-        ]
-        ct.CTFontManagerRegisterFontsForURL.argtypes = [
-            _ctypes.c_void_p, _ctypes.c_uint32, _ctypes.c_void_p
-        ]
-        ct.CTFontManagerRegisterFontsForURL.restype = _ctypes.c_bool
+            elif sys.platform == "win32":
+                # FR_PRIVATE = 0x10 keeps the font private to this process
+                ctypes.windll.gdi32.AddFontResourceExW(path, 0x10, None)
 
-        url = cf.CFURLCreateFromFileSystemRepresentation(
-            None, tmp.name.encode("utf-8"), len(tmp.name), False
-        )
-        ct.CTFontManagerRegisterFontsForURL(url, 1, None)  # scope=process
-        return True
-    except Exception as e:
-        print(f"Font load warning: {e}")
-        return False
+            else:
+                # Linux: add directly to the running process's fontconfig config
+                fc = ctypes.cdll.LoadLibrary("libfontconfig.so.1")
+                fc.FcConfigAppFontAddFile.argtypes = [
+                    ctypes.c_void_p, ctypes.c_char_p]
+                fc.FcConfigAppFontAddFile.restype = ctypes.c_bool
+                fc.FcConfigAppFontAddFile(None, path.encode())
+
+        except Exception as e:
+            print(f"Font load warning: {e}")
 
 def _cleanup_fonts():
     for path in _font_tmp_files:
@@ -14407,10 +14423,6 @@ def _cleanup_fonts():
         except: pass
 
 _atexit.register(_cleanup_fonts)
-_fonts_loaded = _load_font(_FONT_REGULAR_B64) and _load_font(_FONT_BOLD_B64)
-
-# Font family name to use — falls back to Menlo if registration failed
-_SS = "Source Sans 3" if _fonts_loaded else "Menlo"
 
 from pathlib import Path
 
@@ -14480,6 +14492,7 @@ def field_row(parent, label: str, row: int) -> tk.Entry:
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
+        _load_fonts()
 
         self.title("mac-pdf-rgb-fix")
         self.configure(bg=BG)
