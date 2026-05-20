@@ -148,7 +148,12 @@ def prompt_metadata(existing: dict) -> dict:
     }
 
 
-def process_pdf(input_path: str, output_path: str, jpeg_quality: int, prompt_for_metadata: bool = True) -> None:
+def process_pdf_with_metadata(input_path: str, output_path: str, jpeg_quality: int, metadata: dict) -> None:
+    """Wrapper for use by the GUI: applies a pre-built metadata dict instead of prompting."""
+    process_pdf(input_path, output_path, jpeg_quality, prompt_for_metadata=False, metadata=metadata)
+
+
+def process_pdf(input_path: str, output_path: str, jpeg_quality: int, prompt_for_metadata: bool = True, metadata: dict = None) -> None:
     """
     Main processing function. Opens the PDF, finds all image XObjects,
     converts those that need it, and saves the result.
@@ -257,7 +262,13 @@ def process_pdf(input_path: str, output_path: str, jpeg_quality: int, prompt_for
         print(f"    ✓ Done")
 
     # Optionally prompt for metadata and apply it to the document
-    if prompt_for_metadata:
+    if metadata is not None:
+        # Merge caller-supplied fields with existing doc metadata so that
+        # fields like creator/producer (not shown in the GUI) are preserved.
+        merged = dict(doc.metadata)
+        merged.update({k: v for k, v in metadata.items() if v})
+        doc.set_metadata(merged)
+    elif prompt_for_metadata:
         print()
         metadata = prompt_metadata(doc.metadata)
         doc.set_metadata(metadata)
