@@ -29,16 +29,21 @@ Both tools convert all affected images to standard RGB colour space and re-encod
 
 ## Requirements
 
-Python 3.10+ and:
+Python 3.10+, plus packages depending on which version you use:
 
+**Command-line** (`pdf_images_to_rgb.py`)
 ```bash
-pip install pymupdf pillow pyobjc-core pyobjc-framework-Cocoa --break-system-packages
+pip install pymupdf pillow --break-system-packages
 ```
 
-The Tkinter fallback GUI requires Tkinter, which ships with Python but may need a separate install on some macOS setups:
-
+**Tkinter GUI** (`mac_pdf_rgb_fix_gui.py`) — same as above; Tkinter ships with Python and font loading uses stdlib `ctypes`, so no extra packages are needed. If Tkinter is missing on macOS:
 ```bash
 brew install python-tk
+```
+
+**Native AppKit GUI** (`mac_pdf_rgb_fix_appkit.py`) — macOS only; same as above plus:
+```bash
+pip install pyobjc-core pyobjc-framework-Cocoa --break-system-packages
 ```
 
 ## Usage

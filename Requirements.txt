@@ -1,7 +1,12 @@
+# ── Command-line (pdf_images_to_rgb.py) ─────────────────────────────────────
 pymupdf
 pillow
+
+# ── Tkinter GUI (mac_pdf_rgb_fix_gui.py) ────────────────────────────────────
+# Same as above. Tkinter ships with Python; font loading uses stdlib ctypes.
+# If tkinter is missing on macOS: brew install python-tk
+
+# ── Native AppKit GUI (mac_pdf_rgb_fix_appkit.py) — macOS only ──────────────
+# Same as above, plus:
 pyobjc-core
 pyobjc-framework-Cocoa
-
-# Tkinter GUI font loading (macOS: CoreText, Windows: GDI32, Linux: fontconfig)
-# All three use stdlib ctypes — no extra packages needed.
