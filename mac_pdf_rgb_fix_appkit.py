@@ -167,7 +167,7 @@ class AppDelegate(NSObject):
             cv.addSubview_(v)
 
         prev = self._file_row(cv, input_lbl,  self._input_field,  input_btn,  prev)
-        prev = self._file_row(cv, output_lbl, self._output_field, output_btn, prev)
+        prev = self._file_row(cv, output_lbl, self._output_field, output_btn, prev, gap=16)
 
         # ── JPEG QUALITY ───────────────────────────────────────────────────
         prev = self._section_header(cv, "JPEG QUALITY", prev)
@@ -288,9 +288,9 @@ class AppDelegate(NSObject):
         return lbl
 
     @objc.python_method
-    def _file_row(self, cv, lbl, field, btn, prev_view):
+    def _file_row(self, cv, lbl, field, btn, prev_view, gap=ROW_GAP):
         """Lay out label + text field + button below prev_view; return label."""
-        pin(lbl,   "topAnchor",      prev_view, "bottomAnchor",  ROW_GAP)
+        pin(lbl,   "topAnchor",      prev_view, "bottomAnchor",  gap)
         pin(lbl,   "leadingAnchor",  cv,        "leadingAnchor", PAD)
         pin_const(lbl, "widthAnchor", LABEL_W)
         pin_eq(field, "centerYAnchor", lbl, "centerYAnchor")
