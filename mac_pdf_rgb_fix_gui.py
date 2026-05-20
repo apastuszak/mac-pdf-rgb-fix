@@ -14542,7 +14542,7 @@ class App(tk.Tk):
 
         tk.Button(
             file_frame, text="Browse…",
-            bg=ACCENT_DIM, fg=FG, activebackground=ACCENT, activeforeground=BG,
+            bg=ACCENT_DIM, fg="black", activebackground=ACCENT, activeforeground="black",
             relief="flat", font=FONT_LABEL, cursor="hand2",
             command=self._browse_input, padx=10,
         ).grid(row=0, column=2, padx=(8, 0), pady=(6, 2))
@@ -14556,7 +14556,7 @@ class App(tk.Tk):
 
         tk.Button(
             file_frame, text="Browse…",
-            bg=ACCENT_DIM, fg=FG, activebackground=ACCENT, activeforeground=BG,
+            bg=ACCENT_DIM, fg="black", activebackground=ACCENT, activeforeground="black",
             relief="flat", font=FONT_LABEL, cursor="hand2",
             command=self._browse_output, padx=10,
         ).grid(row=1, column=2, padx=(8, 0), pady=(6, 2))
