@@ -234,7 +234,7 @@ class AppDelegate(NSObject):
             cv.addSubview_(lbl)
             cv.addSubview_(field)
 
-            pin(lbl,   "topAnchor",     prev,  "bottomAnchor", ROW_GAP)
+            pin(lbl,   "topAnchor",     prev,  "bottomAnchor", 14)
             pin(lbl,   "leadingAnchor", cv,    "leadingAnchor", PAD)
             pin_const(lbl, "widthAnchor", LABEL_W)
             pin_eq(field, "centerYAnchor", lbl, "centerYAnchor")
