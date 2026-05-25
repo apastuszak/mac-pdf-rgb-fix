@@ -29,21 +29,28 @@ Both tools convert all affected images to standard RGB colour space and re-encod
 
 ## Requirements
 
-Python 3.10+, plus packages depending on which version you use:
+Python 3.10+, plus packages depending on which version you use.
+
+> **Homebrew Python:** If you installed Python via Homebrew, add `--break-system-packages` to any `pip install` command below.
 
 **Command-line** (`pdf_images_to_rgb.py`)
 ```bash
-pip install pymupdf pillow --break-system-packages
+pip install pymupdf pillow
 ```
 
-**Tkinter GUI** (`mac_pdf_rgb_fix_gui.py`) — same as above; Tkinter ships with Python and font loading uses stdlib `ctypes`, so no extra packages are needed. If Tkinter is missing on macOS:
+Optionally, install `pikepdf` to enable automatic repair of PDFs with broken xref tables (common in some print-workflow PDFs where images would otherwise be silently dropped):
+```bash
+pip install pikepdf
+```
+
+**Tkinter GUI** (`mac_pdf_rgb_fix_gui.py`) — everything above; Tkinter ships with Python and font loading uses stdlib `ctypes`, so no extra packages are needed. If Tkinter is missing on macOS:
 ```bash
 brew install python-tk
 ```
 
-**Native AppKit GUI** (`mac_pdf_rgb_fix_appkit.py`) — macOS only; same as above plus:
+**Native AppKit GUI** (`mac_pdf_rgb_fix_appkit.py`) — macOS only; everything above plus:
 ```bash
-pip install pyobjc-core pyobjc-framework-Cocoa --break-system-packages
+pip install pyobjc-core pyobjc-framework-Cocoa
 ```
 
 ## Usage
