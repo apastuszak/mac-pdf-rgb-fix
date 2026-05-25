@@ -19,6 +19,7 @@ from AppKit import (
     NSSlider, NSScrollView, NSTextView,
     NSOpenPanel, NSSavePanel,
     NSAlert,
+    NSMenu, NSMenuItem,
     NSColor, NSFont,
     NSBackingStoreBuffered,
     NSWindowStyleMaskTitled, NSWindowStyleMaskClosable,
@@ -101,8 +102,23 @@ class AppDelegate(NSObject):
 
     def applicationDidFinishLaunching_(self, _notif):
         self._output_manually_set = False
+        self._build_menu()
         self._build_window()
         NSApp.activateIgnoringOtherApps_(True)
+
+    @objc.python_method
+    def _build_menu(self):
+        menubar = NSMenu.alloc().init()
+        app_item = NSMenuItem.alloc().init()
+        menubar.addItem_(app_item)
+        NSApp.setMainMenu_(menubar)
+
+        app_menu = NSMenu.alloc().init()
+        quit_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "Quit mac-pdf-rgb-fix", b"terminate:", "q"
+        )
+        app_menu.addItem_(quit_item)
+        app_item.setSubmenu_(app_menu)
 
     def applicationShouldTerminateAfterLastWindowClosed_(self, _app):
         return True
