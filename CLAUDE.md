@@ -22,6 +22,7 @@ brew install python-tk
 Two entry points that share core conversion logic:
 
 **`pdf_images_to_rgb.py`** — CLI and importable library. Key functions:
+
 - `process_pdf(input, output, jpeg_quality, prompt_for_metadata, metadata)` — main pipeline
 - `process_pdf_with_metadata(input, output, jpeg_quality, metadata)` — GUI-facing wrapper; passes a pre-built metadata dict instead of prompting interactively
 - `needs_conversion(colorspace, filter_)` — returns True for CMYK, grayscale, or JPX images
@@ -37,5 +38,5 @@ The GUI imports `process_pdf_with_metadata` from `pdf_images_to_rgb` inside `_ru
 - **CMYK conversion must use PyMuPDF's LCMS** (`fitz.Pixmap(fitz.csRGB, pix)`). Pillow's CMYK→RGB produces a green colour cast.
 - **`deflate_images` must stay `False`** on `doc.save()`. If enabled, PyMuPDF re-compresses JPEG streams as FlateDecode, undoing the encoding work.
 - **Shared XObjects are processed once by xref**, not once per page. Modifying a shared object updates it everywhere it's referenced.
-- **SMask (transparency) xrefs must be carried forward** into new image object dictionaries, or cut-out images get solid white backgrounds.
+- **`/Mask` vs `/SMask` must be preserved exactly.** PyMuPDF's `get_images()` reports both stencil masks (`/Mask`, 1-bit) and soft masks (`/SMask`, 8-bit grayscale) under the same `smask` field. Always check `doc.xref_get_key(xref, "Mask")` on the original object to determine which key to write. Writing `/SMask` for a stencil mask corrupts transparency compositing and can cause unrelated images elsewhere on the page to disappear.
 - **Indexed/palette images use FlateDecode (lossless)**, not JPEG — JPEG degrades their sharp edges.

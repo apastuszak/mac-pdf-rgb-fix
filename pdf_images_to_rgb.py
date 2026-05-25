@@ -44,6 +44,8 @@ Requirements:
 
 import sys
 import io
+import os
+import tempfile
 from pathlib import Path
 import fitz          # PyMuPDF — PDF manipulation and color conversion
 from PIL import Image  # Pillow — JPEG encoding
@@ -148,6 +150,40 @@ def prompt_metadata(existing: dict) -> dict:
     }
 
 
+def _repair_xref(input_path: str) -> str | None:
+    """
+    Repair a PDF's xref table using pikepdf (QPDF backend) and return the path
+    to a temporary repaired file.
+
+    Some PDFs from print workflows store objects in non-standard locations that
+    PyMuPDF/MuPDF cannot find via the xref table, emitting "cannot find object
+    in xref" errors and silently dropping those objects on save. pikepdf/QPDF
+    scans the entire file for objects and rebuilds a clean xref, so PyMuPDF can
+    then load and save them correctly.
+
+    Returns a temp file path (caller must delete it), or None if pikepdf is not
+    installed or repair fails.
+    """
+    try:
+        import pikepdf
+    except ImportError:
+        return None
+
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(tmp_fd)
+    try:
+        with pikepdf.open(input_path) as pdf:
+            pdf.save(tmp_path)
+        return tmp_path
+    except Exception as e:
+        print(f"  Warning: pikepdf xref repair failed — {e}")
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        return None
+
+
 def process_pdf_with_metadata(input_path: str, output_path: str, jpeg_quality: int, metadata: dict) -> None:
     """Wrapper for use by the GUI: applies a pre-built metadata dict instead of prompting."""
     process_pdf(input_path, output_path, jpeg_quality, prompt_for_metadata=False, metadata=metadata)
@@ -158,7 +194,18 @@ def process_pdf(input_path: str, output_path: str, jpeg_quality: int, prompt_for
     Main processing function. Opens the PDF, finds all image XObjects,
     converts those that need it, and saves the result.
     """
-    doc = fitz.open(input_path)
+    # Some PDFs have objects that are physically present in the file but absent
+    # from the xref table (MuPDF prints "cannot find object in xref" for these).
+    # MuPDF can render them but drops them on save. pikepdf/QPDF recovers them
+    # by scanning the whole file, so we repair first if pikepdf is available.
+    repaired_path = _repair_xref(input_path)
+    if repaired_path:
+        print("  Note: repaired PDF xref via pikepdf — processing repaired copy")
+        load_path = repaired_path
+    else:
+        load_path = input_path
+
+    doc = fitz.open(load_path)
 
     total_converted = 0
     total_skipped = 0
@@ -214,12 +261,22 @@ def process_pdf(input_path: str, output_path: str, jpeg_quality: int, prompt_for
         encoding = "FlateDecode (lossless)" if use_lossless else f"JPEG q={jpeg_quality}"
         print(f"    Converting ({', '.join(reason_parts)}) → RGB {encoding}")
 
-        # Build the SMask entry for the object dict.
-        # SMask is a separate grayscale image that controls transparency —
-        # the PDF renderer uses it to cut out the image shape from the background.
-        # We must preserve this reference in our new dict, or images that had
-        # transparent/cut-out backgrounds will get solid white backgrounds instead.
-        smask_entry = f"  /SMask {smask} 0 R\n" if smask else ""
+        # Build the mask entry for the object dict.
+        # PyMuPDF's get_images() reports both /Mask (1-bit stencil) and /SMask
+        # (8-bit soft mask) under the same "smask" field. We must check the original
+        # dict to preserve the correct key — writing /SMask for a stencil mask
+        # corrupts the transparency compositing and can cause unrelated images on
+        # the same page to disappear.
+        if smask:
+            mask_key = "SMask"
+            try:
+                if doc.xref_get_key(xref, "Mask")[0] != "null":
+                    mask_key = "Mask"
+            except Exception:
+                pass
+            smask_entry = f"  /{mask_key} {smask} 0 R\n"
+        else:
+            smask_entry = ""
 
         if use_lossless:
             # For lossless: write raw pixel bytes and let PyMuPDF compress them.
@@ -274,11 +331,25 @@ def process_pdf(input_path: str, output_path: str, jpeg_quality: int, prompt_for
         doc.set_metadata(metadata)
 
     # Save the modified PDF.
-    # garbage=4: remove all unreferenced objects and deduplicate shared resources.
+    # garbage=0: no garbage collection.
+    # Some PDFs (particularly from print workflows) use hybrid or cross-reference
+    # stream xref structures that MuPDF can render but cannot fully trace during
+    # garbage collection. MuPDF's GC then removes "unfindable" objects — including
+    # live images — causing blank spaces in the output. Since we replace image
+    # streams in-place via update_object/update_stream, we never create orphaned
+    # objects, so GC is not needed for correctness.
     # deflate_fonts=True: compress font streams for smaller file size.
     # deflate_images is intentionally left off — if enabled, PyMuPDF would
     # recompress our JPEG streams as FlateDecode, undoing our encoding work.
-    doc.save(output_path, garbage=4, deflate_fonts=True)
+    doc.save(output_path, garbage=0, deflate_fonts=True)
+    doc.close()
+
+    if repaired_path:
+        try:
+            os.unlink(repaired_path)
+        except OSError:
+            pass
+
     print(f"\nDone! Converted {total_converted} image(s), skipped {total_skipped}.")
     print(f"Output saved to: {output_path}")
 
